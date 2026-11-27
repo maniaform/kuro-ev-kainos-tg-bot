@@ -12,7 +12,7 @@ app = Flask(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 REDIS_URL = os.environ.get("UPSTASH_REDIS_REST_URL", "").strip()
 REDIS_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "").strip()
-TG_API = "https://telegram.org" + "/bot" + BOT_TOKEN
+TG_API = "https://" + "api." + "telegram.org/bot" + BOT_TOKEN
 
 def redis_cmd(args):
     if not REDIS_URL or not REDIS_TOKEN:
