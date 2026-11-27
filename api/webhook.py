@@ -12,7 +12,7 @@ app = Flask(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 REDIS_URL = os.environ.get("UPSTASH_REDIS_REST_URL", "").strip()
 REDIS_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "").strip()
-TG_API = f"https://telegram.org{BOT_TOKEN}"
+TG_API = "https://telegram.org" + "/bot" + BOT_TOKEN
 
 def redis_cmd(args):
     if not REDIS_URL or not REDIS_TOKEN:
@@ -42,7 +42,7 @@ def siusti_tg(method, payload):
 @app.route("/<path:path>", methods=["POST", "GET"])
 def webhook(path=""):
     if request.method == "GET":
-        return f"Telegram botas veikia! BOT_TOKEN ilgis: {len(BOT_TOKEN)}", 200
+        return f"Telegram botas veikia! Token ilgis: {len(BOT_TOKEN)}", 200
 
     update = request.get_json(silent=True) or {}
     chat_id = None
@@ -88,7 +88,7 @@ def webhook(path=""):
                     "reply_markup": miestu_klaviatura()
                 })
             elif data.startswith("city:"):
-                pasirinktas_miestas = data.split(":", 1)
+                pasirinktas_miestas = data.split(":", 1)[1]
                 issaugoti_vartotojo_miesta(chat_id, pasirinktas_miestas)
                 zinute = suformuoti_zinute(pasirinktas_miestas)
                 siusti_tg("sendMessage", {
@@ -105,5 +105,7 @@ def webhook(path=""):
                 "chat_id": chat_id,
                 "text": f"⚠️ Techninė klaida serveryje: {str(e)}"
             })
+
+    return jsonify({"ok": True})
 
     return jsonify({"ok": True})
