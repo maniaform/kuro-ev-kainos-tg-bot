@@ -1,0 +1,28 @@
+name: Rytinis Telegram kainų siuntimas
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  send-daily-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Atsisiųsti kodą
+        uses: actions/checkout@v4
+
+      - name: Paruošti Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Įdiegti bibliotekas
+        run: pip install requests
+
+      - name: Išsiųsti kainų suvestines
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: python daily_sender.py
