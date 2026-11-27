@@ -1,7 +1,9 @@
 import os
-import json
+import sys
 import requests
 from flask import Flask, request, jsonify
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from prices_engine import suformuoti_zinute, miestu_klaviatura, keisti_miesta_mygtukas
 
 app = Flask(__name__)
@@ -14,13 +16,16 @@ TG_API = f"https://telegram.org{BOT_TOKEN}"
 def redis_cmd(args):
     if not REDIS_URL or not REDIS_TOKEN:
         return None
-    r = requests.post(
-        REDIS_URL,
-        headers={"Authorization": f"Bearer {REDIS_TOKEN}"},
-        json=args,
-        timeout=10
-    )
-    return r.json().get("result") if r.ok else None
+    try:
+        r = requests.post(
+            REDIS_URL,
+            headers={"Authorization": f"Bearer {REDIS_TOKEN}"},
+            json=args,
+            timeout=10
+        )
+        return r.json().get("result") if r.ok else None
+    except Exception:
+        return None
 
 def issaugoti_vartotojo_miesta(chat_id, miestas):
     redis_cmd(["HSET", "ev_fuel_users", str(chat_id), miestas])
