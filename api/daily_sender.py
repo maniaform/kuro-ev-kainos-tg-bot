@@ -5,7 +5,7 @@ from prices_engine import gauti_visus_duomenis, suformuoti_zinute, keisti_miesta
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "").strip()
 REDIS_URL = os.environ.get("UPSTASH_REDIS_REST_URL", "").strip()
 REDIS_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "").strip()
-TG_API = "https://telegram.org" + "/bot" + BOT_TOKEN
+TG_API = "https://" + "api." + "telegram.org/bot" + BOT_TOKEN
 
 def gauti_visus_vartotojus():
     r = requests.post(
