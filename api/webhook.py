@@ -32,8 +32,9 @@ def gauti_vartotojo_miesta(chat_id):
 def siusti_tg(method, payload):
     requests.post(f"{TG_API}/{method}", json=payload, timeout=10)
 
-@app.route("/api/webhook", methods=["POST", "GET"])
-def webhook():
+@app.route("/", defaults={"path": ""}, methods=["POST", "GET"])
+@app.route("/<path:path>", methods=["POST", "GET"])
+def webhook(path=""):
     if request.method == "GET":
         return "Telegram botas veikia!", 200
 
