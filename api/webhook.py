@@ -25,7 +25,8 @@ def redis_cmd(args):
             timeout=10
         )
         return r.json().get("result") if r.ok else None
-    except Exception:
+    except Exception as e:
+        print("Redis klaida:", e)
         return None
 
 def issaugoti_vartotojo_miesta(chat_id, miestas):
@@ -36,15 +37,18 @@ def gauti_vartotojo_miesta(chat_id):
     return res if res else "Visa Lietuva"
 
 def siusti_tg(method, payload):
-    requests.post(f"{TG_API}/{method}", json=payload, timeout=10)
+    r = requests.post(f"{TG_API}/{method}", json=payload, timeout=10)
+    print(f"TG {method} atsakymas ({r.status_code}):", r.text)
+    return r
 
 @app.route("/", defaults={"path": ""}, methods=["POST", "GET"])
 @app.route("/<path:path>", methods=["POST", "GET"])
 def webhook(path=""):
     if request.method == "GET":
-        return f"Telegram botas veikia! Token ilgis: {len(BOT_TOKEN)}", 200
+        return f"Veikia! Token ilgis: {len(BOT_TOKEN)}, Redis ilgis: {len(REDIS_URL)}", 200
 
     update = request.get_json(silent=True) or {}
+    print("Gautas update:", update)
     chat_id = None
 
     try:
@@ -100,10 +104,5 @@ def webhook(path=""):
                 })
     except Exception as e:
         print("WEBHOOK KLAIDA:", traceback.format_exc())
-        if chat_id and BOT_TOKEN:
-            siusti_tg("sendMessage", {
-                "chat_id": chat_id,
-                "text": f"⚠️ Techninė klaida serveryje: {str(e)}"
-            })
 
     return jsonify({"ok": True})
