@@ -1,5 +1,6 @@
 import os
 import sys
+import traceback
 import requests
 from flask import Flask, request, jsonify
 
@@ -41,59 +42,68 @@ def siusti_tg(method, payload):
 @app.route("/<path:path>", methods=["POST", "GET"])
 def webhook(path=""):
     if request.method == "GET":
-        return "Telegram botas veikia!", 200
+        return f"Telegram botas veikia! BOT_TOKEN ilgis: {len(BOT_TOKEN)}", 200
 
     update = request.get_json(silent=True) or {}
+    chat_id = None
 
-    if "message" in update:
-        msg = update["message"]
-        chat_id = msg["chat"]["id"]
-        text = (msg.get("text") or "").strip()
+    try:
+        if "message" in update:
+            msg = update["message"]
+            chat_id = msg["chat"]["id"]
+            text = (msg.get("text") or "").strip()
 
-        if text.startswith("/start") or text.startswith("/miestas"):
-            esamas_miestas = gauti_vartotojo_miesta(chat_id)
-            issaugoti_vartotojo_miesta(chat_id, esamas_miestas)
+            if text.startswith("/start") or text.startswith("/miestas"):
+                esamas_miestas = gauti_vartotojo_miesta(chat_id)
+                issaugoti_vartotojo_miesta(chat_id, esamas_miestas)
+                siusti_tg("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": f"Sveiki! 👋 Kas rytą 08:00 val. atsiųsiu mažiausias degalų ir EV įkrovimo kainas.\n\nDabartinė jūsų teritorija: <b>{esamas_miestas}</b>.\nPasirinkite miestą arba visą Lietuvą:",
+                    "parse_mode": "HTML",
+                    "reply_markup": miestu_klaviatura()
+                })
+            else:
+                miestas = gauti_vartotojo_miesta(chat_id)
+                zinute = suformuoti_zinute(miestas)
+                siusti_tg("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": zinute,
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                    "reply_markup": keisti_miesta_mygtukas()
+                })
+
+        elif "callback_query" in update:
+            cb = update["callback_query"]
+            chat_id = cb["message"]["chat"]["id"]
+            cb_id = cb["id"]
+            data = cb.get("data", "")
+
+            siusti_tg("answerCallbackQuery", {"callback_query_id": cb_id})
+
+            if data == "choose_city":
+                siusti_tg("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": "📍 Pasirinkite, kurios teritorijos mažiausias kainas norite matyti šiandien ir gauti kas rytą:",
+                    "reply_markup": miestu_klaviatura()
+                })
+            elif data.startswith("city:"):
+                pasirinktas_miestas = data.split(":", 1)
+                issaugoti_vartotojo_miesta(chat_id, pasirinktas_miestas)
+                zinute = suformuoti_zinute(pasirinktas_miestas)
+                siusti_tg("sendMessage", {
+                    "chat_id": chat_id,
+                    "text": f"✅ Išsaugota teritorija: <b>{pasirinktas_miestas}</b> (kito ryto suvestinė bus iš šios vietovės).\n\n{zinute}",
+                    "parse_mode": "HTML",
+                    "disable_web_page_preview": True,
+                    "reply_markup": keisti_miesta_mygtukas()
+                })
+    except Exception as e:
+        print("WEBHOOK KLAIDA:", traceback.format_exc())
+        if chat_id and BOT_TOKEN:
             siusti_tg("sendMessage", {
                 "chat_id": chat_id,
-                "text": f"Sveiki! 👋 Kas rytą 08:00 val. atsiųsiu mažiausias degalų ir EV įkrovimo kainas.\n\nDabartinė jūsų teritorija: <b>{esamas_miestas}</b>.\nPasirinkite miestą arba visą Lietuvą:",
-                "parse_mode": "HTML",
-                "reply_markup": miestu_klaviatura()
-            })
-        else:
-            miestas = gauti_vartotojo_miesta(chat_id)
-            zinute = suformuoti_zinute(miestas)
-            siusti_tg("sendMessage", {
-                "chat_id": chat_id,
-                "text": zinute,
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-                "reply_markup": keisti_miesta_mygtukas()
-            })
-
-    elif "callback_query" in update:
-        cb = update["callback_query"]
-        chat_id = cb["message"]["chat"]["id"]
-        cb_id = cb["id"]
-        data = cb.get("data", "")
-
-        siusti_tg("answerCallbackQuery", {"callback_query_id": cb_id})
-
-        if data == "choose_city":
-            siusti_tg("sendMessage", {
-                "chat_id": chat_id,
-                "text": "📍 Pasirinkite, kurios teritorijos mažiausias kainas norite matyti šiandien ir gauti kas rytą:",
-                "reply_markup": miestu_klaviatura()
-            })
-        elif data.startswith("city:"):
-            pasirinktas_miestas = data.split(":", 1)[1]
-            issaugoti_vartotojo_miesta(chat_id, pasirinktas_miestas)
-            zinute = suformuoti_zinute(pasirinktas_miestas)
-            siusti_tg("sendMessage", {
-                "chat_id": chat_id,
-                "text": f"✅ Išsaugota teritorija: <b>{pasirinktas_miestas}</b> (kito ryto suvestinė bus iš šios vietovės).\n\n{zinute}",
-                "parse_mode": "HTML",
-                "disable_web_page_preview": True,
-                "reply_markup": keisti_miesta_mygtukas()
+                "text": f"⚠️ Techninė klaida serveryje: {str(e)}"
             })
 
     return jsonify({"ok": True})
